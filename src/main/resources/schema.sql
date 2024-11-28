@@ -1,7 +1,48 @@
--- CREATE TABLE TOP_GAINERS FROM SCRACTH ON STARTUP
+-- CREATE TABLE TOP_GAINERS FROM SCRATCH ON STARTUP
 DROP TABLE IF EXISTS top_gainers;
-CREATE TABLE top_gainers (id BIGINT AUTO_INCREMENT PRIMARY KEY, ticker VARCHAR(10), price DECIMAL(10,2), change_amount DECIMAL(10,2), change_percentage DECIMAL(5,2));
+CREATE TABLE top_gainers (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    ticker VARCHAR(10) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    change_amount DECIMAL(10,2) NOT NULL,
+    change_percentage DECIMAL(5,2) NOT NULL
+);
 
--- CREATE TABLE TOP_LOSERS FROM SCRACTH ON STARTUP
+-- CREATE TABLE TOP_LOSERS FROM SCRATCH ON STARTUP
 DROP TABLE IF EXISTS top_losers;
-CREATE TABLE top_losers (id BIGINT AUTO_INCREMENT PRIMARY KEY, ticker VARCHAR(10), price DECIMAL(10,2), change_amount DECIMAL(10,2), change_percentage DECIMAL(5,2));
+CREATE TABLE top_losers (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    ticker VARCHAR(10) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    change_amount DECIMAL(10,2) NOT NULL,
+    change_percentage DECIMAL(5,2) NOT NULL
+);
+
+-- CREATE TABLE MOST_ACTIVELY_TRADED FROM SCRATCH ON STARTUP
+DROP TABLE IF EXISTS most_actively_traded;
+CREATE TABLE most_actively_traded (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    ticker VARCHAR(10) NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    change_amount DECIMAL(10,2) NOT NULL,
+    change_percentage DECIMAL(5,2) NOT NULL,
+    volume BIGINT NOT NULL
+);
+
+
+-- CREATE TABLE NEWS FROM SCRATCH ON STARTUP
+DROP TABLE IF EXISTS news;
+CREATE TABLE news (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    title VARCHAR(255) NOT NULL,
+    url VARCHAR(255) NOT NULL,
+    time_published TIMESTAMP NOT NULL,
+    authors VARCHAR(255) NOT NULL,
+    summary TEXT NOT NULL,
+    banner_image VARCHAR(255) NOT NULL,
+    source VARCHAR(100) NOT NULL,
+    category_within_source VARCHAR(100) NOT NULL,
+    source_domain VARCHAR(100) NOT NULL,
+    overall_sentiment_score DECIMAL(5, 4) NOT NULL,
+    overall_sentiment_label VARCHAR(50) NOT NULL
+);
