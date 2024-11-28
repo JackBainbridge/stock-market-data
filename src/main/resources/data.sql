@@ -1,9 +1,3 @@
-DROP TABLE IF EXISTS top_gainers;
-CREATE TABLE top_gainers (ticker VARCHAR(10), price DECIMAL(10,2), change_amount DECIMAL(10,2), change_percentage DECIMAL(5,2));
-
-DROP TABLE IF EXISTS top_losers;
-CREATE TABLE top_losers (ticker VARCHAR(10), price DECIMAL(10,2), change_amount DECIMAL(10,2), change_percentage DECIMAL(5,2));
-
 INSERT INTO top_gainers (ticker, price, change_amount, change_percentage) VALUES ('IDAI', 0.84, 0.475, 130.137);
 INSERT INTO top_gainers (ticker, price, change_amount, change_percentage) VALUES ('VCIG', 4.1, 2.28, 125.2747);
 INSERT INTO top_gainers (ticker, price, change_amount, change_percentage) VALUES ('SRZNW', 0.0197, 0.0097, 97.0);

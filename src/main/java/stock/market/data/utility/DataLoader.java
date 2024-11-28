@@ -56,12 +56,6 @@ public class DataLoader implements CommandLineRunner {
             throw new RuntimeException(e);
         }
         try (FileWriter writer = new FileWriter(outputFile)) {
-            writer.write("DROP TABLE IF EXISTS top_gainers;\n");
-            writer.write("CREATE TABLE top_gainers (ticker VARCHAR(10), price DECIMAL(10,2), change_amount DECIMAL(10,2), change_percentage DECIMAL(5,2));\n\n");
-
-            writer.write("DROP TABLE IF EXISTS top_losers;\n");
-            writer.write("CREATE TABLE top_losers (ticker VARCHAR(10), price DECIMAL(10,2), change_amount DECIMAL(10,2), change_percentage DECIMAL(5,2));\n\n");
-
             List<Map<String, String>> topGainers = (List<Map<String, String>>) responseMap.get("top_gainers");
             for (Map<String, String> gainer : topGainers) {
                 String sql = String.format("INSERT INTO top_gainers (ticker, price, change_amount, change_percentage) VALUES ('%s', %s, %s, %s);\n",
