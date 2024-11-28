@@ -3,3 +3,9 @@ WORKDIR /app
 COPY target/*.jar app.jar
 COPY src/main/resources/data.sql /app/resources/data.sql
 ENTRYPOINT ["java", "-jar", "app.jar"]
+
+# Expose port 8080 to connect to H2 Console.
+EXPOSE 8080
+
+# Expose H2 TCP Server port.
+EXPOSE 9092

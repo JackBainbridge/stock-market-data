@@ -26,4 +26,4 @@ else
 fi
 
 # Step 4, run new container.
-docker run -d --name ${CONTAINER_NAME} ${IMAGE_NAME}
+docker run -p 8080:8080 -d --name ${CONTAINER_NAME} ${IMAGE_NAME}

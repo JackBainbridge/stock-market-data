@@ -7,6 +7,7 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.util.List;
@@ -38,7 +39,14 @@ public class DataLoader implements CommandLineRunner {
 
         if (dockerDetectionConfiguration.isRunningInDocker()) {
             logger.info("We are currently executing inside of a docker container - Output file path will be modified.");
-            outputFile = "app/resources/data.sql";
+            outputFile = "/app/resources/data.sql";
+
+            // Validate file already exists and populated.
+            File f = new File(outputFile);
+            if (f.exists() && f.isFile() && f.length() > 0){
+                logger.info("{} already exists and is populated with data, no need to create.",  outputFile);
+                return;
+            }
         }
 
         try {
