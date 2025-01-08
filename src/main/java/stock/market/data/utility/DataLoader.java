@@ -65,6 +65,7 @@ public class DataLoader implements CommandLineRunner {
             }
         }
         boolean dataRetrieved = retrieveTopGainersAndLosersAndTraded(objectMapper, restTemplate, outputFile);
+
         if (!dataRetrieved) {
             logger.error("Error has occurred! Data has NOT been retrieved via method: " +
                     "retrieveTopGainersAndLosersAndTraded. Investigate.");
@@ -72,7 +73,6 @@ public class DataLoader implements CommandLineRunner {
         }
 
         boolean loadComplete = loadTheGeneratedDataFile(outputFile);
-
         if (!loadComplete) {
             logger.error("Error has occurred! Data has NOT been loaded. Investigate.");
             return;

@@ -12,7 +12,7 @@ import java.nio.file.Paths;
 
 @Configuration
 public class DockerDetectionConfiguration {
-    private final Logger logger = LogManager.getLogger(DataLoader.class);
+    private final Logger logger = LogManager.getLogger(DockerDetectionConfiguration.class);
 
     @Bean
     public boolean isRunningInDocker() {
