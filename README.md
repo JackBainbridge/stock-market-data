@@ -31,7 +31,7 @@ Once running data is able to be retrieved via the in memory H2 database by using
 
     http://localhost:8080/h2-console
 
-![IntelliJ-H2-Database-Connection-Test](images/IntelliJ-H2-Database-Connection-Test.png)
+![IntelliJ-H2-Database-Connection-Test](src/main/resources/images/IntelliJ-H2-Database-Connection-Test.png)
 
 
 ### Running Locally (with Docker)
@@ -40,7 +40,7 @@ Simply deploy the container to Docker Desktop via docker-deploy-local.sh shell s
 
     ./docker-deploy-local.sh
 
-![Docker-Desktop-Local-Deployment](images/Docker-Desktop-Local-Deployment.png)
+![Docker-Desktop-Local-Deployment](src/main/resources/images/Docker-Desktop-Local-Deployment.png)
 
 This will spin up a container named 'stock-market-container' in Docker Desktop. From there once again, you are able to view the H2 database by using the H2 Console in the browser 
 
@@ -48,7 +48,7 @@ Ensure JDBC URL = jdbc:h2:mem:testdb
 
     http://localhost:8082/h2-console
 
-![Docker-H2-Database-Connection-Test](images/Docker-H2-Database-Connection-Test.png)
+![Docker-H2-Database-Connection-Test](src/main/resources/images/Docker-H2-Database-Connection-Test.png)
 
 ## Running the tests
 
