@@ -7,11 +7,14 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.ApplicationEvent;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 import stock.market.data.configuration.DockerDetectionConfiguration;
 import stock.market.data.constants.AlphaVantageAPIFunctionConstants;
+import stock.market.data.events.RunnerCompletedEvent;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -46,9 +49,12 @@ public class DataFileGenerator implements CommandLineRunner {
     private String DATA_FILE_NAME;
 
     private final DockerDetectionConfiguration dockerDetectionConfiguration;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
-    public DataFileGenerator(DockerDetectionConfiguration dockerDetectionConfiguration) {
+    public DataFileGenerator(DockerDetectionConfiguration dockerDetectionConfiguration,
+                             ApplicationEventPublisher applicationEventPublisher) {
         this.dockerDetectionConfiguration = dockerDetectionConfiguration;
+        this.applicationEventPublisher = applicationEventPublisher;
     }
 
     @Override
@@ -70,7 +76,10 @@ public class DataFileGenerator implements CommandLineRunner {
         if (!dataRetrieved) {
             logger.error("Error has occurred! Data has NOT been retrieved via method: " +
                     "retrieveTopGainersAndLosersAndTraded. Investigate.");
+            return;
         }
+
+        applicationEventPublisher.publishEvent(new RunnerCompletedEvent(this, DataFileGenerator.class));
     }
 
     /**
@@ -81,7 +90,6 @@ public class DataFileGenerator implements CommandLineRunner {
      * @return
      */
     private boolean retrieveTopGainersAndLosersAndTraded(ObjectMapper objectMapper, RestTemplate restTemplate, String dataFile) {
-        // Construct the full API URL.
         String apiFullUrl = String.format(API_BASE_URL + FUNCTION_PARAM,
                 AlphaVantageAPIFunctionConstants.TOP_GAINERS_LOSERS.name(), API_KEY);
 
@@ -101,6 +109,12 @@ public class DataFileGenerator implements CommandLineRunner {
             logger.error("An exception has occurred attempted to Map the TOP_GAINERS_LOSERS. Please investigate.");
             throw new RuntimeException(e);
         }
+
+        if (responseMap.containsKey("Information")) {
+            logger.info("We have reached the limit of demo API calls! {}", responseMap.get("Information"));
+            return false;
+        }
+
         try (FileWriter writer = new FileWriter(dataFile)) {
             List<Map<String, String>> topGainers = objectMapper.convertValue(responseMap.get("top_gainers"),
                     new TypeReference<>() {});

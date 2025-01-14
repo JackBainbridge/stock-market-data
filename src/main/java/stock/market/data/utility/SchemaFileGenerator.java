@@ -5,9 +5,11 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import stock.market.data.configuration.DockerDetectionConfiguration;
+import stock.market.data.events.RunnerCompletedEvent;
 import stock.market.data.events.SchemaGeneratedEvent;
 import stock.market.data.models.ColumnInformationSchemaFile;
 
@@ -24,7 +26,7 @@ import java.util.regex.Pattern;
 
 @Component
 @Order(2)
-public class SchemaFileGenerator implements CommandLineRunner {
+public class SchemaFileGenerator implements CommandLineRunner, ApplicationListener<RunnerCompletedEvent> {
     private final Logger logger = LogManager.getLogger(SchemaFileGenerator.class);
 
     @Value("${src.main.resources}")
@@ -39,8 +41,9 @@ public class SchemaFileGenerator implements CommandLineRunner {
     @Value("${output.docker.path}")
     private String DOCKER_OUTPUT_PATH;
 
-    private ApplicationEventPublisher applicationEventPublisher;
+    private final ApplicationEventPublisher applicationEventPublisher;
     private final DockerDetectionConfiguration dockerDetectionConfiguration;
+    private boolean firstRunnerCompleted;
 
     public SchemaFileGenerator(ApplicationEventPublisher applicationEventPublisher,
                                DockerDetectionConfiguration dockerDetectionConfiguration) {
@@ -49,7 +52,19 @@ public class SchemaFileGenerator implements CommandLineRunner {
     }
 
     @Override
+    public void onApplicationEvent(RunnerCompletedEvent event) {
+        if (event.getRunnerClass().equals(DataFileGenerator.class)) {
+            this.firstRunnerCompleted = true;
+        }
+    }
+
+    @Override
     public void run(String... args) {
+        if (!firstRunnerCompleted) {
+            logger.info("The first order runner has not completed. SchemaFileGenerator will not be executed.");
+            return;
+        }
+
         String dataFile;
         if (dockerDetectionConfiguration.isRunningInDocker()) {
             dataFile = String.format("%s/%s", DOCKER_OUTPUT_PATH, DATA_FILE_NAME);
@@ -68,7 +83,10 @@ public class SchemaFileGenerator implements CommandLineRunner {
         if (!schemaFileGenerated) {
             logger.error("Error has occurred! schema file has not been generated please investigate.");
         }
+
+        // Publish application events that will trigger the other runners.
         applicationEventPublisher.publishEvent(new SchemaGeneratedEvent(this));
+        applicationEventPublisher.publishEvent(new RunnerCompletedEvent(this, SchemaFileGenerator.class));
     }
 
     /**

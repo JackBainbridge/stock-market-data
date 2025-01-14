@@ -3,6 +3,8 @@ package stock.market.data.utility;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ApplicationListener;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -16,10 +18,11 @@ import javax.sql.DataSource;
 
 import org.apache.logging.log4j.Logger;
 import stock.market.data.configuration.DockerDetectionConfiguration;
+import stock.market.data.events.RunnerCompletedEvent;
 
 @Component
-@Order(4)
-public class DataFileLoader implements CommandLineRunner {
+@Order(3)
+public class DataFileLoader implements CommandLineRunner, ApplicationListener<RunnerCompletedEvent> {
     private final Logger logger = LogManager.getLogger(DataFileLoader.class);
 
     @Value("${src.main.resources}")
@@ -33,11 +36,21 @@ public class DataFileLoader implements CommandLineRunner {
 
     private final DataSource dataSource;
     private final DockerDetectionConfiguration dockerDetectionConfiguration;
+    private final ApplicationEventPublisher applicationEventPublisher;
+    private boolean secondRunnerCompleted;
 
     public DataFileLoader(DockerDetectionConfiguration dockerDetectionConfiguration, DataSource dataSource,
-                          DockerDetectionConfiguration dockerDetectionConfiguration1) {
+                          DockerDetectionConfiguration dockerDetectionConfiguration1, ApplicationEventPublisher applicationEventPublisher) {
         this.dataSource = dataSource;
         this.dockerDetectionConfiguration = dockerDetectionConfiguration1;
+        this.applicationEventPublisher = applicationEventPublisher;
+    }
+
+    @Override
+    public void onApplicationEvent(RunnerCompletedEvent event) {
+        if (event.getRunnerClass().equals(SchemaFileGenerator.class)) {
+            this.secondRunnerCompleted = true;
+        }
     }
 
     /**
@@ -47,6 +60,10 @@ public class DataFileLoader implements CommandLineRunner {
      */
     @Override
     public void run(String... args) {
+        if (!secondRunnerCompleted) {
+            logger.info("The second order runner has not completed. DataFileLoader will not be executed.");
+            return;
+        }
         logger.trace("Data Loading beginning.");
         String dataFile;
         if (dockerDetectionConfiguration.isRunningInDocker()) {
@@ -60,6 +77,9 @@ public class DataFileLoader implements CommandLineRunner {
             logger.error("Error has occurred! Data has NOT been loaded. Investigate.");
             return;
         }
+
+        applicationEventPublisher.publishEvent(new RunnerCompletedEvent(this, DataFileGenerator.class));
+
         logger.trace("Data Loading complete.");
         logger.info("Data Loading complete.");
     }
