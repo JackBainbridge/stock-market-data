@@ -3,8 +3,10 @@ package stock.market.data.utility;
 import org.apache.logging.log4j.LogManager;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
@@ -37,13 +39,17 @@ public class DataFileLoader implements CommandLineRunner, ApplicationListener<Ru
     private final DataSource dataSource;
     private final DockerDetectionConfiguration dockerDetectionConfiguration;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final ApplicationContext context;
     private boolean secondRunnerCompleted;
 
-    public DataFileLoader(DockerDetectionConfiguration dockerDetectionConfiguration, DataSource dataSource,
-                          DockerDetectionConfiguration dockerDetectionConfiguration1, ApplicationEventPublisher applicationEventPublisher) {
+    public DataFileLoader(DockerDetectionConfiguration dockerDetectionConfiguration,
+                          DataSource dataSource,
+                          ApplicationEventPublisher applicationEventPublisher,
+                          ApplicationContext context) {
         this.dataSource = dataSource;
-        this.dockerDetectionConfiguration = dockerDetectionConfiguration1;
+        this.dockerDetectionConfiguration = dockerDetectionConfiguration;
         this.applicationEventPublisher = applicationEventPublisher;
+        this.context = context;
     }
 
     @Override
@@ -75,7 +81,9 @@ public class DataFileLoader implements CommandLineRunner, ApplicationListener<Ru
         boolean loadComplete = loadTheGeneratedDataFile(dataFile);
         if (!loadComplete) {
             logger.error("Error has occurred! Data has NOT been loaded. Investigate.");
-            return;
+
+            // Shutdown the application
+            ((ConfigurableApplicationContext) context).close();
         }
 
         applicationEventPublisher.publishEvent(new RunnerCompletedEvent(this, DataFileGenerator.class));

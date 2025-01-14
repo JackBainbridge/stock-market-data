@@ -4,8 +4,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import stock.market.data.configuration.DockerDetectionConfiguration;
@@ -43,12 +45,14 @@ public class SchemaFileGenerator implements CommandLineRunner, ApplicationListen
 
     private final ApplicationEventPublisher applicationEventPublisher;
     private final DockerDetectionConfiguration dockerDetectionConfiguration;
+    private final ApplicationContext context;
     private boolean firstRunnerCompleted;
 
     public SchemaFileGenerator(ApplicationEventPublisher applicationEventPublisher,
-                               DockerDetectionConfiguration dockerDetectionConfiguration) {
+                               DockerDetectionConfiguration dockerDetectionConfiguration, ApplicationContext context) {
         this.applicationEventPublisher = applicationEventPublisher;
         this.dockerDetectionConfiguration = dockerDetectionConfiguration;
+        this.context = context;
     }
 
     @Override
@@ -76,12 +80,17 @@ public class SchemaFileGenerator implements CommandLineRunner, ApplicationListen
         Map<String, Map<String, ColumnInformationSchemaFile>> dataAnalyzed = analyzeDataFileSql(dataFile);
         if (dataAnalyzed == null || dataAnalyzed.isEmpty()) {
             logger.error("Error has occurred! Data has NOT been analyzed via method: analyzeDataSql. Investigate.");
-            return;
+
+            // Shutdown the application
+            ((ConfigurableApplicationContext) context).close();
         }
 
         boolean schemaFileGenerated = generateSchemaFileBasedOnDataFile(dataAnalyzed);
         if (!schemaFileGenerated) {
             logger.error("Error has occurred! schema file has not been generated please investigate.");
+
+            // Shutdown the application
+            ((ConfigurableApplicationContext) context).close();
         }
 
         // Publish application events that will trigger the other runners.

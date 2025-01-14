@@ -7,8 +7,10 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
@@ -50,11 +52,14 @@ public class DataFileGenerator implements CommandLineRunner {
 
     private final DockerDetectionConfiguration dockerDetectionConfiguration;
     private final ApplicationEventPublisher applicationEventPublisher;
+    private final ApplicationContext context;
 
     public DataFileGenerator(DockerDetectionConfiguration dockerDetectionConfiguration,
-                             ApplicationEventPublisher applicationEventPublisher) {
+                             ApplicationEventPublisher applicationEventPublisher,
+                             ApplicationContext context) {
         this.dockerDetectionConfiguration = dockerDetectionConfiguration;
         this.applicationEventPublisher = applicationEventPublisher;
+        this.context = context;
     }
 
     @Override
@@ -76,6 +81,9 @@ public class DataFileGenerator implements CommandLineRunner {
         if (!dataRetrieved) {
             logger.error("Error has occurred! Data has NOT been retrieved via method: " +
                     "retrieveTopGainersAndLosersAndTraded. Investigate.");
+
+            // Shutdown the application
+            ((ConfigurableApplicationContext) context).close();
             return;
         }
 
