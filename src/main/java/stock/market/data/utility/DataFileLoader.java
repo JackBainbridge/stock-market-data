@@ -87,7 +87,6 @@ public class DataFileLoader implements CommandLineRunner, ApplicationListener<Ru
         }
 
         applicationEventPublisher.publishEvent(new RunnerCompletedEvent(this, DataFileGenerator.class));
-
         logger.trace("Data Loading complete.");
         logger.info("Data Loading complete.");
     }

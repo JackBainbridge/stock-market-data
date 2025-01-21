@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.jdbc.datasource.init.ResourceDatabasePopulator;
 import stock.market.data.events.SchemaGeneratedEvent;
+import stock.market.data.utility.FileUtil;
 
 import javax.sql.DataSource;
 import java.io.File;
@@ -31,31 +32,35 @@ public class DatabaseConfiguration implements ApplicationListener<SchemaGenerate
 
     private final DataSource dataSource;
     private final DockerDetectionConfiguration dockerDetectionConfiguration;
+    private final FileUtil fileUtil;
 
-    public DatabaseConfiguration(DataSource dataSource, DockerDetectionConfiguration dockerDetectionConfiguration) {
+    public DatabaseConfiguration(DataSource dataSource,
+                                 DockerDetectionConfiguration dockerDetectionConfiguration,
+                                 FileUtil fileUtil) {
         this.dataSource = dataSource;
         this.dockerDetectionConfiguration = dockerDetectionConfiguration;
+        this.fileUtil = fileUtil;
     }
 
+    /**
+     * Application event detection, only runs on a SchemaGeneratedEvent.
+     * @param event
+     */
     @Override
     public void onApplicationEvent(SchemaGeneratedEvent event) {
-        String schemaFile = String.format("%s/%s", SRC_MAIN_RESOURCES, SCHEMA_FILE_NAME);
+        String schemaFile;
         if (dockerDetectionConfiguration.isRunningInDocker()) {
             logger.info("We are currently executing inside of a docker container - Output file path will be modified.");
             schemaFile = validateDockerOutputFileLocation();
             if (schemaFile == null) {
                 logger.error("Unable to validate Docker Output File Location, please investigate.");
+                return;
             }
+            Path schemaPath = Paths.get(schemaFile);
+            loadSchemafile(schemaPath);
         } else {
             Path schemaPath = Paths.get(String.format("%s/%s", SRC_MAIN_RESOURCES, SCHEMA_FILE_NAME));
-            if (Files.exists(schemaPath)) {
-                // File exists, proceed with populator
-                ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
-                populator.addScript(new FileSystemResource(schemaPath.toFile()));
-                populator.execute(dataSource);
-            } else {
-                logger.error("Error has occurred, Schema.sql not found!");
-            }
+            loadSchemafile(schemaPath);
         }
     }
 
@@ -66,8 +71,8 @@ public class DatabaseConfiguration implements ApplicationListener<SchemaGenerate
      */
     private String validateDockerOutputFileLocation() {
         String schemaFile = String.format("%s/%s", DOCKER_OUTPUT_PATH, SCHEMA_FILE_NAME);
-        File f = new File(schemaFile);
-        if (!f.exists()) {
+        boolean fileDoesExist = fileUtil.validateIfFileExists(schemaFile);
+        if (!fileDoesExist) {
             Path dockerOutputDir = Path.of(DOCKER_OUTPUT_PATH);
             if (Files.notExists(dockerOutputDir)) {
                 logger.info("{} directory does not exist, will be created.", DOCKER_OUTPUT_PATH);
@@ -88,10 +93,21 @@ public class DatabaseConfiguration implements ApplicationListener<SchemaGenerate
                 logger.error(e);
                 return null;
             }
-        } else if (f.exists() && f.isFile() && f.length() > 0){
-            logger.info("{} already exists and is populated with data, no need to create.",  schemaFile);
-            return schemaFile;
         }
         return schemaFile;
+    }
+
+    /**
+     * Execute the defined FileSystemResource as specified by the Path passed in.
+     * @param schemaPath
+     */
+    private void loadSchemafile(Path schemaPath) {
+        if (Files.exists(schemaPath)) {
+            ResourceDatabasePopulator populator = new ResourceDatabasePopulator();
+            populator.addScript(new FileSystemResource(schemaPath.toFile()));
+            populator.execute(dataSource);
+        } else {
+            logger.error("Error has occurred, Schema.sql not found at {}", schemaPath);
+        }
     }
 }

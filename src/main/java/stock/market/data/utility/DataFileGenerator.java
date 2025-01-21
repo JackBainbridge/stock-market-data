@@ -8,7 +8,6 @@ import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.ApplicationContext;
-import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.core.annotation.Order;
@@ -53,19 +52,20 @@ public class DataFileGenerator implements CommandLineRunner {
     private final DockerDetectionConfiguration dockerDetectionConfiguration;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final ApplicationContext context;
+    private final FileUtil fileUtil;
 
     public DataFileGenerator(DockerDetectionConfiguration dockerDetectionConfiguration,
                              ApplicationEventPublisher applicationEventPublisher,
-                             ApplicationContext context) {
+                             ApplicationContext context,
+                             FileUtil fileUtil) {
         this.dockerDetectionConfiguration = dockerDetectionConfiguration;
         this.applicationEventPublisher = applicationEventPublisher;
         this.context = context;
+        this.fileUtil = fileUtil;
     }
 
     @Override
     public void run(String... args) {
-        RestTemplate restTemplate = new RestTemplate();
-        ObjectMapper objectMapper = new ObjectMapper();
         String dataFile = String.format("%s/%s", SRC_MAIN_RESOURCES, DATA_FILE_NAME);
 
         if (dockerDetectionConfiguration.isRunningInDocker()) {
@@ -77,27 +77,48 @@ public class DataFileGenerator implements CommandLineRunner {
             }
         }
 
-        boolean dataRetrieved = retrieveTopGainersAndLosersAndTraded(objectMapper, restTemplate, dataFile);
-        if (!dataRetrieved) {
-            logger.error("Error has occurred! Data has NOT been retrieved via method: " +
-                    "retrieveTopGainersAndLosersAndTraded. Investigate.");
+        Map<String, Object> jsonResponse;
+        boolean fileExists = fileUtil.validateIfFileExists(dataFile);
+        if (fileExists) {
+            applicationEventPublisher.publishEvent(new RunnerCompletedEvent(this, DataFileGenerator.class));
+            return;
+        } else {
+            jsonResponse = retrieveTopGainersAndLosersAndTraded(dataFile);
+            if (jsonResponse == null) {
+                logger.info("retrieveTopGainersAndLosersAndTraded has returned NULL. Please Investigate.");
+
+                // Shutdown the application
+                ((ConfigurableApplicationContext) context).close();
+                return;
+            }
+            if (jsonResponse.containsKey("Information")) {
+                logger.info("We have reached the limit of demo API calls! {}", jsonResponse.get("Information"));
+
+                // Shutdown the application
+                ((ConfigurableApplicationContext) context).close();
+                return;
+            }
+        }
+
+        boolean sqlDataFileGenerated = writeDataFile(dataFile, jsonResponse);
+        if (!sqlDataFileGenerated) {
+            logger.info("Data.sql file was not generated. Please investigate.");
 
             // Shutdown the application
             ((ConfigurableApplicationContext) context).close();
             return;
         }
-
         applicationEventPublisher.publishEvent(new RunnerCompletedEvent(this, DataFileGenerator.class));
     }
 
     /**
      * Retrieves Top Gainers, Losers and Actively Traded stocks and writes them to dataFile.
-     * @param objectMapper
-     * @param restTemplate
      * @param dataFile
      * @return
      */
-    private boolean retrieveTopGainersAndLosersAndTraded(ObjectMapper objectMapper, RestTemplate restTemplate, String dataFile) {
+    private Map<String, Object> retrieveTopGainersAndLosersAndTraded(String dataFile) {
+        RestTemplate restTemplate = new RestTemplate();
+        ObjectMapper objectMapper = new ObjectMapper();
         String apiFullUrl = String.format(API_BASE_URL + FUNCTION_PARAM,
                 AlphaVantageAPIFunctionConstants.TOP_GAINERS_LOSERS.name(), API_KEY);
 
@@ -106,7 +127,7 @@ public class DataFileGenerator implements CommandLineRunner {
             jsonResponse = restTemplate.getForObject(apiFullUrl, String.class);
         } catch (Exception e) {
             logger.error("Error has occurred attempt to retrieve data : {}. Please investigate.", apiFullUrl);
-            return false;
+            return null;
         }
 
         Map<String, Object> responseMap;
@@ -115,14 +136,13 @@ public class DataFileGenerator implements CommandLineRunner {
             responseMap = objectMapper.readValue(jsonResponse, new TypeReference<>() {});
         } catch (JsonProcessingException e) {
             logger.error("An exception has occurred attempted to Map the TOP_GAINERS_LOSERS. Please investigate.");
-            throw new RuntimeException(e);
+            return null;
         }
+        return responseMap;
+    }
 
-        if (responseMap.containsKey("Information")) {
-            logger.info("We have reached the limit of demo API calls! {}", responseMap.get("Information"));
-            return false;
-        }
-
+    private boolean writeDataFile(String dataFile, Map<String, Object> responseMap) {
+        ObjectMapper objectMapper = new ObjectMapper();
         try (FileWriter writer = new FileWriter(dataFile)) {
             List<Map<String, String>> topGainers = objectMapper.convertValue(responseMap.get("top_gainers"),
                     new TypeReference<>() {});
@@ -158,8 +178,8 @@ public class DataFileGenerator implements CommandLineRunner {
                 writer.write(sql);
             }
         } catch (IOException e) {
-            logger.error("An IOException attempting to write to: {}", dataFile);
-            throw new RuntimeException(e);
+            logger.error("An IOException attempting to write to: {} .. exception {}", dataFile, e);
+            return false;
         }
         return true;
     }
@@ -193,9 +213,6 @@ public class DataFileGenerator implements CommandLineRunner {
                 logger.error(e);
                 return null;
             }
-        } else if (f.exists() && f.isFile() && f.length() > 0){
-            logger.info("{} already exists and is populated with data, no need to create.",  dataFile);
-            return dataFile;
         }
         return dataFile;
     }
