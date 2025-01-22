@@ -167,6 +167,7 @@ public class SchemaFileGenerator implements CommandLineRunner, ApplicationListen
             // Drop the table if it possibly exists before
             schemaLines.add("DROP TABLE IF EXISTS " + tableName + ";\n");
             schemaLines.add("CREATE TABLE " + tableName + " (");
+            schemaLines.add("ID BIGINT AUTO_INCREMENT PRIMARY KEY");
             List<String> columnDefinitions = new ArrayList<>();
 
             for (Map.Entry<String, ColumnInformationSchemaFile> columnEntry : columnInfo.entrySet()) {
